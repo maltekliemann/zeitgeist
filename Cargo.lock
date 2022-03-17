@@ -4935,7 +4935,7 @@ dependencies = [
 [[package]]
 name = "pallet-author-mapping"
 version = "2.0.5"
-source = "git+https://github.com/PureStake/moonbeam?rev=45257659f04b28dd4927b5dc611fac6f9e8905fd#45257659f04b28dd4927b5dc611fac6f9e8905fd"
+source = "git+https://github.com/zeitgeistpm/moonbeam?branch=parachain-staking-migrations-3#f7053eb2f412e1e9d9449c5650a3a7129c88693d"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5867,7 +5867,7 @@ dependencies = [
 [[package]]
 name = "parachain-staking"
 version = "3.0.0"
-source = "git+https://github.com/PureStake/moonbeam?rev=45257659f04b28dd4927b5dc611fac6f9e8905fd#45257659f04b28dd4927b5dc611fac6f9e8905fd"
+source = "git+https://github.com/zeitgeistpm/moonbeam?branch=parachain-staking-migrations-3#f7053eb2f412e1e9d9449c5650a3a7129c88693d"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5879,7 +5879,7 @@ dependencies = [
  "serde",
  "sp-runtime",
  "sp-std",
- "substrate-fixed 0.5.8 (git+https://github.com/encointer/substrate-fixed)",
+ "substrate-fixed",
 ]
 
 [[package]]
@@ -10524,16 +10524,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "substrate-fixed"
-version = "0.5.8"
-source = "git+https://github.com/encointer/substrate-fixed#5984ba9b9433d5007597c7f03f65ea5bf6d08601"
-dependencies = [
- "parity-scale-codec 2.3.1",
- "scale-info",
- "typenum 1.15.0 (git+https://github.com/encointer/typenum?tag=v1.15.0)",
-]
-
-[[package]]
 name = "substrate-frame-rpc-system"
 version = "4.0.0-dev"
 source = "git+https://github.com/purestake/substrate?branch=moonbeam-polkadot-v0.9.16#570b21a17d9ab06d8508180c98ad2c476ebcec6f"
@@ -12057,7 +12047,7 @@ dependencies = [
  "sp-session",
  "sp-transaction-pool",
  "sp-version",
- "substrate-fixed 0.5.8 (git+https://github.com/encointer/substrate-fixed?rev=5984ba9b9433d5007597c7f03f65ea5bf6d08601)",
+ "substrate-fixed",
  "substrate-wasm-builder",
  "xcm",
  "xcm-builder",
@@ -12211,7 +12201,7 @@ dependencies = [
  "sp-arithmetic",
  "sp-io",
  "sp-runtime",
- "substrate-fixed 0.5.8 (git+https://github.com/encointer/substrate-fixed?rev=5984ba9b9433d5007597c7f03f65ea5bf6d08601)",
+ "substrate-fixed",
  "zeitgeist-primitives",
  "zrml-authorized",
  "zrml-court",
@@ -12261,7 +12251,7 @@ dependencies = [
  "sp-core",
  "sp-io",
  "sp-runtime",
- "substrate-fixed 0.5.8 (git+https://github.com/encointer/substrate-fixed?rev=5984ba9b9433d5007597c7f03f65ea5bf6d08601)",
+ "substrate-fixed",
  "zeitgeist-primitives",
  "zrml-rikiddo",
 ]
@@ -12274,7 +12264,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "libfuzzer-sys",
- "substrate-fixed 0.5.8 (git+https://github.com/encointer/substrate-fixed?rev=5984ba9b9433d5007597c7f03f65ea5bf6d08601)",
+ "substrate-fixed",
  "zrml-rikiddo",
 ]
 
@@ -12313,7 +12303,7 @@ dependencies = [
  "sp-api",
  "sp-io",
  "sp-runtime",
- "substrate-fixed 0.5.8 (git+https://github.com/encointer/substrate-fixed?rev=5984ba9b9433d5007597c7f03f65ea5bf6d08601)",
+ "substrate-fixed",
  "zeitgeist-primitives",
  "zrml-liquidity-mining",
  "zrml-market-commons",
