@@ -687,7 +687,7 @@ mod pallet {
             let mut weight_pool_joins_and_sells = 0;
             let mut remaining_sells: Vec<(Asset<MarketIdOf<T>>, BalanceOf<T>)> =
                 Vec::with_capacity(amount_outcome_assets.len());
-            let mut add_liqudity =
+            let mut add_liquidity =
                 |amount: BalanceOf<T>, asset: Asset<MarketIdOf<T>>| -> DispatchResult {
                     let local_weight = T::Swaps::pool_join_with_exact_asset_amount(
                         who.clone(),
@@ -725,7 +725,7 @@ mod pallet {
                 };
 
                 if remaining_amount > zero_balance {
-                    add_liqudity(remaining_amount, asset_in)?;
+                    add_liquidity(remaining_amount, asset_in)?;
                 }
 
                 remaining_sells.push((
@@ -739,7 +739,7 @@ mod pallet {
                 (amount_base_asset).saturating_sub(MinLiquidity::get().saturated_into());
 
             if remaining_amount > zero_balance {
-                add_liqudity(remaining_amount, Asset::Ztg)?;
+                add_liquidity(remaining_amount, Asset::Ztg)?;
             }
 
             // If desired, sell remaining assets. An additional loop is used because the
