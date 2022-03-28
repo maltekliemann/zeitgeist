@@ -44,6 +44,23 @@ fn simple_create_categorical_market<T: crate::Config>(
     ));
 }
 
+fn simple_create_scalar_market<T: crate::Config>(
+    creation: MarketCreation,
+    period: Range<u64>,
+    scoring_rule: ScoringRule
+) {
+    assert_ok!(PredictionMarkets::create_scalar_market(
+        Origin::signed(ALICE),
+        BOB,
+        MarketPeriod::Block(period),
+        gen_metadata(2),
+        creation,
+        0..=1000,
+        MarketDisputeMechanism::SimpleDisputes,
+        scoring_rule
+    ));
+}
+
 #[test]
 fn it_creates_binary_markets() {
     ExtBuilder::default().build().execute_with(|| {
@@ -954,6 +971,31 @@ fn market_resolve_does_not_hold_liquidity_withdraw() {
         assert_ok!(Swaps::pool_exit(Origin::signed(FRED), 0, BASE * 100, vec![0, 0]));
         assert_ok!(PredictionMarkets::redeem_shares(Origin::signed(BOB), 0));
     })
+}
+
+#[test]
+fn scalar_market_resolves_correctly_after_sudo_close() {
+    ExtBuilder::default().build().execute_with(|| {
+        // Creates an advised market.
+        simple_create_scalar_market::<Runtime>(
+            MarketCreation::Advised,
+            0..50,
+            ScoringRule::CPMM,
+        );
+
+        run_to_block(5);
+        assert_ok!(PredictionMarkets::admin_move_market_to_closed(Origin::signed(SUDO), 0));
+        run_to_block(10);
+        assert_ok!(PredictionMarkets::report(Origin::signed(BOB), 0, OutcomeReport::Scalar(500)));
+        run_to_block(15);
+        assert_ok!(PredictionMarkets::dispute(Origin::signed(CHARLIE), 0, OutcomeReport::Scalar(499)));
+        run_to_block(20);
+        assert_ok!(PredictionMarkets::dispute(Origin::signed(DAVE), 0, OutcomeReport::Scalar(501)));
+        run_to_block(33);
+
+        let market = MarketCommons::market(&0);
+        assert_eq!(market.unwrap().status, MarketStatus::Resolved);
+    });
 }
 
 fn deploy_swap_pool(market: Market<u128, u64, u64>, market_id: u128) -> DispatchResult {
