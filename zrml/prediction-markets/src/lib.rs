@@ -19,17 +19,14 @@ mod pallet {
         dispatch::{DispatchResultWithPostInfo, Weight},
         ensure,
         pallet_prelude::{ConstU32, StorageValue, ValueQuery},
-        traits::{
-            Currency, EnsureOrigin, Get, IsType, NamedReservableCurrency, OnUnbalanced,
-            StorageVersion,
-        },
+        traits::{Currency, Get, IsType, StorageVersion},
         transactional, BoundedVec, PalletId,
     };
     use frame_system::{ensure_signed, pallet_prelude::OriginFor};
     use sp_runtime::{traits::Saturating, DispatchError, DispatchResult, SaturatedConversion};
     use zeitgeist_primitives::{
-        constants::{PmPalletId, MILLISECS_PER_BLOCK},
-        traits::{DisputeApi, Swaps, ZeitgeistMultiReservableCurrency},
+        constants::{MILLISECS_PER_BLOCK},
+        traits::Swaps,
         types::{
             Asset, Market, MarketCreation, MarketDispute, MarketDisputeMechanism, MarketPeriod,
             MarketStatus, MarketType, MultiHash, OutcomeReport, Report, ScalarPosition,
@@ -39,8 +36,6 @@ mod pallet {
     use zrml_liquidity_mining::LiquidityMiningPalletApi;
     use zrml_market_commons::MarketCommonsPalletApi;
 
-    pub(crate) const RESERVE_ID: [u8; 8] = PmPalletId::get().0;
-
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
 
     pub(crate) type BalanceOf<T> =
@@ -49,8 +44,6 @@ mod pallet {
         <<T as Config>::MarketCommons as MarketCommonsPalletApi>::Currency;
     pub(crate) type MarketIdOf<T> =
         <<T as Config>::MarketCommons as MarketCommonsPalletApi>::MarketId;
-    type NegativeImbalanceOf<T> =
-        <CurrencyOf<T> as Currency<<T as frame_system::Config>::AccountId>>::NegativeImbalance;
     pub(crate) type MomentOf<T> = <<T as Config>::MarketCommons as MarketCommonsPalletApi>::Moment;
 
     #[pallet::call]
@@ -80,23 +73,7 @@ mod pallet {
             let MultiHash::Sha3_384(multihash) = metadata;
             ensure!(multihash[0] == 0x15 && multihash[1] == 0x30, <Error<T>>::InvalidMultihash);
 
-            let status: MarketStatus = match creation {
-                MarketCreation::Permissionless => {
-                    let required_bond = T::ValidityBond::get() + T::OracleBond::get();
-                    CurrencyOf::<T>::reserve_named(&RESERVE_ID, &sender, required_bond)?;
-
-                    if scoring_rule == ScoringRule::CPMM {
-                        MarketStatus::Active
-                    } else {
-                        MarketStatus::CollectingSubsidy
-                    }
-                }
-                MarketCreation::Advised => {
-                    let required_bond = T::AdvisoryBond::get() + T::OracleBond::get();
-                    CurrencyOf::<T>::reserve_named(&RESERVE_ID, &sender, required_bond)?;
-                    MarketStatus::Proposed
-                }
-            };
+            let status: MarketStatus = MarketStatus::Active;
 
             let market = Market {
                 creation,
@@ -128,39 +105,6 @@ mod pallet {
     #[pallet::config]
     pub trait Config: frame_system::Config {
         #[pallet::constant]
-        type AdvisoryBond: Get<BalanceOf<Self>>;
-
-        type ApprovalOrigin: EnsureOrigin<Self::Origin>;
-
-        type Authorized: zrml_authorized::AuthorizedPalletApi<
-            AccountId = Self::AccountId,
-            Balance = BalanceOf<Self>,
-            BlockNumber = Self::BlockNumber,
-            MarketId = MarketIdOf<Self>,
-            Moment = MomentOf<Self>,
-            Origin = Self::Origin,
-        >;
-
-        type CloseOrigin: EnsureOrigin<Self::Origin>;
-
-        type Court: zrml_court::CourtPalletApi<
-            AccountId = Self::AccountId,
-            Balance = BalanceOf<Self>,
-            BlockNumber = Self::BlockNumber,
-            MarketId = MarketIdOf<Self>,
-            Moment = MomentOf<Self>,
-            Origin = Self::Origin,
-        >;
-
-        type DestroyOrigin: EnsureOrigin<Self::Origin>;
-
-        #[pallet::constant]
-        type DisputeBond: Get<BalanceOf<Self>>;
-
-        #[pallet::constant]
-        type DisputeFactor: Get<BalanceOf<Self>>;
-
-        #[pallet::constant]
         type DisputePeriod: Get<Self::BlockNumber>;
 
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
@@ -190,36 +134,10 @@ mod pallet {
         type MinSubsidyPeriod: Get<MomentOf<Self>>;
 
         #[pallet::constant]
-        type MaxDisputes: Get<u32>;
-
-        type Shares: ZeitgeistMultiReservableCurrency<
-            Self::AccountId,
-            Balance = BalanceOf<Self>,
-            CurrencyId = Asset<MarketIdOf<Self>>,
-        >;
-
-        #[pallet::constant]
         type PalletId: Get<PalletId>;
 
         #[pallet::constant]
         type OracleBond: Get<BalanceOf<Self>>;
-
-        #[pallet::constant]
-        type ReportingPeriod: Get<u32>;
-
-        type ResolveOrigin: EnsureOrigin<Self::Origin>;
-
-        type SimpleDisputes: DisputeApi<
-            AccountId = Self::AccountId,
-            Balance = BalanceOf<Self>,
-            BlockNumber = Self::BlockNumber,
-            MarketId = MarketIdOf<Self>,
-            Moment = MomentOf<Self>,
-            Origin = Self::Origin,
-        >;
-
-        type Slash: OnUnbalanced<NegativeImbalanceOf<Self>>;
-
         type Swaps: Swaps<Self::AccountId, Balance = BalanceOf<Self>, MarketId = MarketIdOf<Self>>;
 
         #[pallet::constant]
@@ -400,14 +318,5 @@ mod pallet {
 
             Ok(T::WeightInfo::start_subsidy(total_assets.saturated_into()))
         }
-    }
-
-    pub fn default_dispute_bond<T>(n: usize) -> BalanceOf<T>
-    where
-        T: Config,
-    {
-        T::DisputeBond::get().saturating_add(
-            T::DisputeFactor::get().saturating_mul(n.saturated_into::<u32>().into()),
-        )
     }
 }
