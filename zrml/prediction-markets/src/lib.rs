@@ -14,23 +14,19 @@ pub use pallet::*;
 mod pallet {
     use crate::weights::*;
     use alloc::{vec, vec::Vec};
-    use core::{marker::PhantomData};
+    use core::marker::PhantomData;
     use frame_support::{
         dispatch::{DispatchResultWithPostInfo, Weight},
         ensure,
         pallet_prelude::{ConstU32, StorageValue, ValueQuery},
         traits::{
-            Currency, EnsureOrigin, ExistenceRequirement, Get, IsType, NamedReservableCurrency,
-            OnUnbalanced, StorageVersion,
+            Currency, EnsureOrigin, Get, IsType, NamedReservableCurrency, OnUnbalanced,
+            StorageVersion,
         },
         transactional, BoundedVec, PalletId,
     };
     use frame_system::{ensure_signed, pallet_prelude::OriginFor};
-    use orml_traits::MultiCurrency;
-    use sp_runtime::{
-        traits::{AccountIdConversion, Saturating, Zero},
-        DispatchError, DispatchResult, SaturatedConversion,
-    };
+    use sp_runtime::{traits::Saturating, DispatchError, DispatchResult, SaturatedConversion};
     use zeitgeist_primitives::{
         constants::{PmPalletId, MILLISECS_PER_BLOCK},
         traits::{DisputeApi, Swaps, ZeitgeistMultiReservableCurrency},
@@ -59,19 +55,6 @@ mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        #[pallet::weight(
-            T::WeightInfo::buy_complete_set(T::MaxCategories::get().into())
-        )]
-        #[transactional]
-        pub fn buy_complete_set(
-            origin: OriginFor<T>,
-            market_id: MarketIdOf<T>,
-            #[pallet::compact] amount: BalanceOf<T>,
-        ) -> DispatchResultWithPostInfo {
-            let sender = ensure_signed(origin)?;
-            Self::do_buy_complete_set(sender, market_id, amount)
-        }
-
         #[pallet::weight(T::WeightInfo::create_categorical_market())]
         #[transactional]
         pub fn create_categorical_market(
@@ -336,58 +319,6 @@ mod pallet {
                         Asset::ScalarOutcome(market_id, ScalarPosition::Short),
                     ]
                 }
-            }
-        }
-
-        pub(crate) fn market_account(market_id: MarketIdOf<T>) -> T::AccountId {
-            T::PalletId::get().into_sub_account(market_id.saturated_into::<u128>())
-        }
-
-        pub(crate) fn do_buy_complete_set(
-            who: T::AccountId,
-            market_id: MarketIdOf<T>,
-            amount: BalanceOf<T>,
-        ) -> DispatchResultWithPostInfo {
-            ensure!(amount != BalanceOf::<T>::zero(), Error::<T>::ZeroAmount);
-            ensure!(CurrencyOf::<T>::free_balance(&who) >= amount, Error::<T>::NotEnoughBalance);
-
-            let market = T::MarketCommons::market(&market_id)?;
-            ensure!(market.scoring_rule == ScoringRule::CPMM, Error::<T>::InvalidScoringRule);
-            Self::ensure_market_is_active(&market.period)?;
-            ensure!(market.status == MarketStatus::Active, Error::<T>::MarketIsNotActive);
-
-            let market_account = Self::market_account(market_id);
-            CurrencyOf::<T>::transfer(
-                &who,
-                &market_account,
-                amount,
-                ExistenceRequirement::KeepAlive,
-            )?;
-
-            let assets = Self::outcome_assets(market_id, &market);
-            for asset in assets.iter() {
-                T::Shares::deposit(*asset, &who, amount)?;
-            }
-
-            Self::deposit_event(Event::BoughtCompleteSet(market_id, amount, who));
-
-            let assets_len: u32 = assets.len().saturated_into();
-            let max_cats: u32 = T::MaxCategories::get().into();
-            Self::calculate_actual_weight(&T::WeightInfo::buy_complete_set, assets_len, max_cats)
-        }
-
-        fn calculate_actual_weight<F>(
-            func: F,
-            weight_parameter: u32,
-            max_weight_parameter: u32,
-        ) -> DispatchResultWithPostInfo
-        where
-            F: Fn(u32) -> Weight,
-        {
-            if weight_parameter == max_weight_parameter {
-                Ok(None.into())
-            } else {
-                Ok(Some(func(weight_parameter)).into())
             }
         }
 
