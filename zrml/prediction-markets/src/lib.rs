@@ -16,13 +16,12 @@ mod pallet {
     use alloc::{vec, vec::Vec};
     use core::marker::PhantomData;
     use frame_support::{
-        dispatch::{DispatchResultWithPostInfo, Weight},
+        dispatch::DispatchResultWithPostInfo,
         pallet_prelude::{ConstU32, StorageValue, ValueQuery},
         traits::{Currency, Get, IsType, StorageVersion},
         transactional, BoundedVec, PalletId,
     };
     use frame_system::{ensure_signed, pallet_prelude::OriginFor};
-    use sp_runtime::{DispatchError, SaturatedConversion};
     use zeitgeist_primitives::{
         traits::Swaps,
         types::{
@@ -79,15 +78,10 @@ mod pallet {
                 status,
             };
             let market_id = T::MarketCommons::push_market(market.clone())?;
-            let mut extra_weight = 0;
-
-            if market.status == MarketStatus::CollectingSubsidy {
-                extra_weight = Self::start_subsidy(&market, market_id)?;
-            }
 
             Self::deposit_event(Event::MarketCreated(market_id, market));
 
-            Ok(Some(T::WeightInfo::create_categorical_market().saturating_add(extra_weight)).into())
+            Ok(Some(T::WeightInfo::create_categorical_market()).into())
         }
     }
 
@@ -133,39 +127,6 @@ mod pallet {
         type ValidityBond: Get<BalanceOf<Self>>;
 
         type WeightInfo: WeightInfoZeitgeist;
-    }
-
-    #[pallet::error]
-    pub enum Error<T> {
-        CannotDisputeSameOutcome,
-        InsufficientFundsInMarketAccount,
-        InsufficientShareBalance,
-        InvalidMultihash,
-        InvalidMarketType,
-        InvalidScoringRule,
-        NotEnoughBalance,
-        OutcomeOutOfRange,
-        MarketAlreadyReported,
-        MarketIsNotActive,
-        MarketIsNotClosed,
-        MarketIsNotCollectingSubsidy,
-        MarketIsNotProposed,
-        MarketIsNotReported,
-        MarketIsNotResolved,
-        MarketNotReported,
-        MarketStartTooSoon,
-        MarketStartTooLate,
-        MaxDisputesReached,
-        NotEnoughAssets,
-        NotEnoughCategories,
-        NoWinningBalance,
-        OutcomeMismatch,
-        ReporterNotOracle,
-        StorageOverflow,
-        SwapPoolExists,
-        TooManyCategories,
-        InvalidMarketStatus,
-        ZeroAmount,
     }
 
     #[pallet::event]
@@ -227,35 +188,6 @@ mod pallet {
                     ]
                 }
             }
-        }
-
-        pub(crate) fn start_subsidy(
-            market: &Market<T::AccountId, T::BlockNumber, MomentOf<T>>,
-            market_id: MarketIdOf<T>,
-        ) -> Result<Weight, DispatchError> {
-            let mut assets = Self::outcome_assets(market_id, market);
-            let base_asset = Asset::Ztg;
-            assets.push(base_asset);
-            let total_assets = assets.len();
-
-            let pool_id = T::Swaps::create_pool(
-                market.creator.clone(),
-                assets,
-                base_asset,
-                market_id,
-                market.scoring_rule,
-                None,
-                None,
-            )?;
-
-            T::MarketCommons::insert_market_pool(market_id, pool_id);
-            <MarketsCollectingSubsidy<T>>::try_mutate(|markets| {
-                markets
-                    .try_push(SubsidyUntil { market_id, period: market.period.clone() })
-                    .map_err(|_| <Error<T>>::StorageOverflow)
-            })?;
-
-            Ok(T::WeightInfo::start_subsidy(total_assets.saturated_into()))
         }
     }
 }
