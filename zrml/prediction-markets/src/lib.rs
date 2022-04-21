@@ -12,16 +12,23 @@ mod pallet {
     use frame_system::pallet_prelude::OriginFor;
     use zeitgeist_primitives::types::MultiHash;
 
-    #[pallet::call]
     impl<T: Config> Pallet<T> {
-        #[pallet::weight(T::WeightInfo::create_categorical_market())]
-        #[transactional]
         pub fn create_categorical_market(
             _: OriginFor<T>,
             metadata: MultiHash,
-        ) -> DispatchResultWithPostInfo {
-            let MultiHash::Sha3_384(_multihash) = metadata;
-            Ok(Some(T::WeightInfo::create_categorical_market()).into())
+        ) -> Result<Option<u128>, &'static str> {
+            use frame_support::storage::{with_transaction, TransactionOutcome};
+            with_transaction(|| {
+                let r = (|| {
+                    let MultiHash::Sha3_384(_multihash) = metadata;
+                    Ok(Some(0))
+                })();
+                if r.is_ok() {
+                    TransactionOutcome::Commit(r)
+                } else {
+                    TransactionOutcome::Rollback(r)
+                }
+            })
         }
     }
 
