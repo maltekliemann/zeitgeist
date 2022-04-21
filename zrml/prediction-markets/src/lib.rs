@@ -1,8 +1,5 @@
-#[cfg(feature = "arbitrary")]
-use arbitrary::{Arbitrary, Result, Unstructured};
-use frame_support::dispatch::{Decode, Encode};
+use frame_support::storage::{with_transaction, TransactionOutcome};
 
-#[derive(Clone, Debug, Decode, Encode, Eq, PartialEq)]
 pub enum MultiHash {
     Sha3_384([u8; 50]),
 }
@@ -10,7 +7,6 @@ pub enum MultiHash {
 pub fn create_categorical_market(
     metadata: MultiHash,
 ) -> Result<Option<u128>, &'static str> {
-    use frame_support::storage::{with_transaction, TransactionOutcome};
     with_transaction(|| {
         let r = (|| {
             let MultiHash::Sha3_384(_multihash) = metadata;
