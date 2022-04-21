@@ -17,15 +17,13 @@ mod pallet {
     use core::marker::PhantomData;
     use frame_support::{
         dispatch::{DispatchResultWithPostInfo, Weight},
-        ensure,
         pallet_prelude::{ConstU32, StorageValue, ValueQuery},
         traits::{Currency, Get, IsType, StorageVersion},
         transactional, BoundedVec, PalletId,
     };
     use frame_system::{ensure_signed, pallet_prelude::OriginFor};
-    use sp_runtime::{traits::Saturating, DispatchError, DispatchResult, SaturatedConversion};
+    use sp_runtime::{DispatchError, SaturatedConversion};
     use zeitgeist_primitives::{
-        constants::{MILLISECS_PER_BLOCK},
         traits::Swaps,
         types::{
             Asset, Market, MarketCreation, MarketDispute, MarketDisputeMechanism, MarketPeriod,
@@ -61,17 +59,8 @@ mod pallet {
             scoring_rule: ScoringRule,
         ) -> DispatchResultWithPostInfo {
             let sender = ensure_signed(origin)?;
-            Self::ensure_market_is_active(&period)?;
-
-            ensure!(categories >= T::MinCategories::get(), <Error<T>>::NotEnoughCategories);
-            ensure!(categories <= T::MaxCategories::get(), <Error<T>>::TooManyCategories);
-
-            if scoring_rule == ScoringRule::RikiddoSigmoidFeeMarketEma {
-                Self::ensure_market_start_is_in_time(&period)?;
-            }
 
             let MultiHash::Sha3_384(multihash) = metadata;
-            ensure!(multihash[0] == 0x15 && multihash[1] == 0x30, <Error<T>>::InvalidMultihash);
 
             let status: MarketStatus = MarketStatus::Active;
 
@@ -240,60 +229,10 @@ mod pallet {
             }
         }
 
-        fn ensure_market_is_active(
-            period: &MarketPeriod<T::BlockNumber, MomentOf<T>>,
-        ) -> DispatchResult {
-            ensure!(
-                match period {
-                    MarketPeriod::Block(range) => {
-                        <frame_system::Pallet<T>>::block_number() < range.end
-                    }
-                    MarketPeriod::Timestamp(range) => {
-                        T::MarketCommons::now() < range.end
-                    }
-                },
-                Error::<T>::MarketIsNotActive
-            );
-            Ok(())
-        }
-
-        fn ensure_market_start_is_in_time(
-            period: &MarketPeriod<T::BlockNumber, MomentOf<T>>,
-        ) -> DispatchResult {
-            let interval = match period {
-                MarketPeriod::Block(range) => {
-                    let interval_blocks: u128 = range
-                        .start
-                        .saturating_sub(<frame_system::Pallet<T>>::block_number())
-                        .saturated_into();
-                    interval_blocks.saturating_mul(MILLISECS_PER_BLOCK.into())
-                }
-                MarketPeriod::Timestamp(range) => {
-                    range.start.saturating_sub(T::MarketCommons::now()).saturated_into()
-                }
-            };
-
-            ensure!(
-                <MomentOf<T>>::saturated_from(interval) >= T::MinSubsidyPeriod::get(),
-                <Error<T>>::MarketStartTooSoon
-            );
-            ensure!(
-                <MomentOf<T>>::saturated_from(interval) <= T::MaxSubsidyPeriod::get(),
-                <Error<T>>::MarketStartTooLate
-            );
-            Ok(())
-        }
-
         pub(crate) fn start_subsidy(
             market: &Market<T::AccountId, T::BlockNumber, MomentOf<T>>,
             market_id: MarketIdOf<T>,
         ) -> Result<Weight, DispatchError> {
-            ensure!(T::MarketCommons::market_pool(&market_id).is_err(), Error::<T>::SwapPoolExists);
-            ensure!(
-                market.status == MarketStatus::CollectingSubsidy,
-                Error::<T>::MarketIsNotCollectingSubsidy
-            );
-
             let mut assets = Self::outcome_assets(market_id, market);
             let base_asset = Asset::Ztg;
             assets.push(base_asset);
