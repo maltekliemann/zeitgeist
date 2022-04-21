@@ -14,7 +14,7 @@ pub use pallet::*;
 mod pallet {
     use crate::weights::*;
     use alloc::{vec, vec::Vec};
-    use core::{marker::PhantomData, ops::RangeInclusive};
+    use core::{marker::PhantomData};
     use frame_support::{
         dispatch::{DispatchResultWithPostInfo, Weight},
         ensure,
@@ -139,74 +139,6 @@ mod pallet {
             Self::deposit_event(Event::MarketCreated(market_id, market));
 
             Ok(Some(T::WeightInfo::create_categorical_market().saturating_add(extra_weight)).into())
-        }
-
-        #[pallet::weight(T::WeightInfo::create_scalar_market())]
-        #[transactional]
-        pub fn create_scalar_market(
-            origin: OriginFor<T>,
-            oracle: T::AccountId,
-            period: MarketPeriod<T::BlockNumber, MomentOf<T>>,
-            metadata: MultiHash,
-            creation: MarketCreation,
-            outcome_range: RangeInclusive<u128>,
-            mdm: MarketDisputeMechanism<T::AccountId>,
-            scoring_rule: ScoringRule,
-        ) -> DispatchResultWithPostInfo {
-            let sender = ensure_signed(origin)?;
-            Self::ensure_market_is_active(&period)?;
-
-            ensure!(outcome_range.start() < outcome_range.end(), "Invalid range provided.");
-
-            if scoring_rule == ScoringRule::RikiddoSigmoidFeeMarketEma {
-                Self::ensure_market_start_is_in_time(&period)?;
-            }
-
-            let MultiHash::Sha3_384(multihash) = metadata;
-            ensure!(multihash[0] == 0x15 && multihash[1] == 0x30, <Error<T>>::InvalidMultihash);
-
-            let status: MarketStatus = match creation {
-                MarketCreation::Permissionless => {
-                    let required_bond = T::ValidityBond::get() + T::OracleBond::get();
-                    CurrencyOf::<T>::reserve_named(&RESERVE_ID, &sender, required_bond)?;
-
-                    if scoring_rule == ScoringRule::CPMM {
-                        MarketStatus::Active
-                    } else {
-                        MarketStatus::CollectingSubsidy
-                    }
-                }
-                MarketCreation::Advised => {
-                    let required_bond = T::AdvisoryBond::get() + T::OracleBond::get();
-                    CurrencyOf::<T>::reserve_named(&RESERVE_ID, &sender, required_bond)?;
-                    MarketStatus::Proposed
-                }
-            };
-
-            let market = Market {
-                creation,
-                creator_fee: 0,
-                creator: sender,
-                market_type: MarketType::Scalar(outcome_range),
-                mdm,
-                metadata: Vec::from(multihash),
-                oracle,
-                period,
-                report: None,
-                resolved_outcome: None,
-                status,
-                scoring_rule,
-            };
-            let market_id = T::MarketCommons::push_market(market.clone())?;
-            let mut extra_weight = 0;
-
-            if market.status == MarketStatus::CollectingSubsidy {
-                extra_weight = Self::start_subsidy(&market, market_id)?;
-            }
-
-            Self::deposit_event(Event::MarketCreated(market_id, market));
-
-            Ok(Some(T::WeightInfo::create_scalar_market().saturating_add(extra_weight)).into())
         }
     }
 
