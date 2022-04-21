@@ -13,7 +13,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 mod pallet {
     use crate::weights::*;
-    use alloc::{vec, vec::Vec};
+    use alloc::vec::Vec;
     use core::marker::PhantomData;
     use frame_support::{
         dispatch::DispatchResultWithPostInfo,
@@ -26,8 +26,7 @@ mod pallet {
         traits::Swaps,
         types::{
             Asset, Market, MarketCreation, MarketDispute, MarketDisputeMechanism, MarketPeriod,
-            MarketStatus, MarketType, MultiHash, OutcomeReport, Report, ScalarPosition,
-            ScoringRule, SubsidyUntil,
+            MarketStatus, MarketType, MultiHash, OutcomeReport, Report, ScoringRule, SubsidyUntil,
         },
     };
     use zrml_liquidity_mining::LiquidityMiningPalletApi;
@@ -167,27 +166,4 @@ mod pallet {
         BoundedVec<SubsidyUntil<T::BlockNumber, MomentOf<T>, MarketIdOf<T>>, ConstU32<1_048_576>>,
         ValueQuery,
     >;
-
-    impl<T: Config> Pallet<T> {
-        pub fn outcome_assets(
-            market_id: MarketIdOf<T>,
-            market: &Market<T::AccountId, T::BlockNumber, MomentOf<T>>,
-        ) -> Vec<Asset<MarketIdOf<T>>> {
-            match market.market_type {
-                MarketType::Categorical(categories) => {
-                    let mut assets = Vec::new();
-                    for i in 0..categories {
-                        assets.push(Asset::CategoricalOutcome(market_id, i));
-                    }
-                    assets
-                }
-                MarketType::Scalar(_) => {
-                    vec![
-                        Asset::ScalarOutcome(market_id, ScalarPosition::Long),
-                        Asset::ScalarOutcome(market_id, ScalarPosition::Short),
-                    ]
-                }
-            }
-        }
-    }
 }
