@@ -14,23 +14,22 @@ pub use pallet::*;
 mod pallet {
     use crate::weights::*;
     use alloc::{vec, vec::Vec};
-    use core::{cmp, marker::PhantomData, ops::RangeInclusive};
+    use core::{marker::PhantomData, ops::RangeInclusive};
     use frame_support::{
         dispatch::{DispatchResultWithPostInfo, Weight},
-        ensure, log,
-        pallet_prelude::{ConstU32, StorageMap, StorageValue, ValueQuery},
-        storage::{with_transaction, TransactionOutcome},
+        ensure,
+        pallet_prelude::{ConstU32, StorageValue, ValueQuery},
         traits::{
-            Currency, EnsureOrigin, ExistenceRequirement, Get, Hooks, Imbalance, IsType,
-            NamedReservableCurrency, OnUnbalanced, StorageVersion,
+            Currency, EnsureOrigin, ExistenceRequirement, Get, IsType, NamedReservableCurrency,
+            OnUnbalanced, StorageVersion,
         },
-        transactional, Blake2_128Concat, BoundedVec, PalletId, Twox64Concat,
+        transactional, BoundedVec, PalletId,
     };
     use frame_system::{ensure_signed, pallet_prelude::OriginFor};
     use orml_traits::MultiCurrency;
     use sp_runtime::{
-        traits::{AccountIdConversion, CheckedDiv, Saturating, Zero},
-        ArithmeticError, DispatchError, DispatchResult, SaturatedConversion,
+        traits::{AccountIdConversion, Saturating, Zero},
+        DispatchError, DispatchResult, SaturatedConversion,
     };
     use zeitgeist_primitives::{
         constants::{PmPalletId, MILLISECS_PER_BLOCK},
@@ -460,54 +459,6 @@ mod pallet {
             }
         }
 
-        fn calculate_internal_resolve_weight(
-            market: &Market<T::AccountId, T::BlockNumber, MomentOf<T>>,
-            total_accounts: u32,
-            total_asset_accounts: u32,
-            total_categories: u32,
-            total_disputes: u32,
-        ) -> Weight {
-            if let MarketType::Categorical(_) = market.market_type {
-                if let MarketStatus::Reported = market.status {
-                    T::WeightInfo::internal_resolve_categorical_reported(
-                        total_accounts,
-                        total_asset_accounts,
-                        total_categories,
-                    )
-                } else {
-                    T::WeightInfo::internal_resolve_categorical_disputed(
-                        total_accounts,
-                        total_asset_accounts,
-                        total_categories,
-                        total_disputes,
-                    )
-                }
-            } else if let MarketStatus::Reported = market.status {
-                T::WeightInfo::internal_resolve_scalar_reported()
-            } else {
-                T::WeightInfo::internal_resolve_scalar_disputed(total_disputes)
-            }
-        }
-
-        fn ensure_can_not_dispute_the_same_outcome(
-            disputes: &[MarketDispute<T::AccountId, T::BlockNumber>],
-            report: &Report<T::AccountId, T::BlockNumber>,
-            outcome: &OutcomeReport,
-        ) -> DispatchResult {
-            if let Some(last_dispute) = disputes.last() {
-                ensure!(&last_dispute.outcome != outcome, Error::<T>::CannotDisputeSameOutcome);
-            } else {
-                ensure!(&report.outcome != outcome, Error::<T>::CannotDisputeSameOutcome);
-            }
-            Ok(())
-        }
-
-        #[inline]
-        fn ensure_disputes_does_not_exceed_max_disputes(num_disputes: u32) -> DispatchResult {
-            ensure!(num_disputes < T::MaxDisputes::get(), Error::<T>::MaxDisputesReached);
-            Ok(())
-        }
-
         fn ensure_market_is_active(
             period: &MarketPeriod<T::BlockNumber, MomentOf<T>>,
         ) -> DispatchResult {
@@ -521,23 +472,6 @@ mod pallet {
                     }
                 },
                 Error::<T>::MarketIsNotActive
-            );
-            Ok(())
-        }
-
-        fn ensure_market_is_closed(
-            period: &MarketPeriod<T::BlockNumber, MomentOf<T>>,
-        ) -> DispatchResult {
-            ensure!(
-                match period {
-                    MarketPeriod::Block(range) => {
-                        <frame_system::Pallet<T>>::block_number() >= range.end
-                    }
-                    MarketPeriod::Timestamp(range) => {
-                        T::MarketCommons::now() >= range.end
-                    }
-                },
-                Error::<T>::MarketIsNotClosed
             );
             Ok(())
         }
@@ -567,102 +501,6 @@ mod pallet {
                 <Error<T>>::MarketStartTooLate
             );
             Ok(())
-        }
-
-        fn ensure_outcome_matches_market_type(
-            market: &Market<T::AccountId, T::BlockNumber, MomentOf<T>>,
-            outcome: &OutcomeReport,
-        ) -> DispatchResult {
-            if let OutcomeReport::Categorical(ref inner) = outcome {
-                if let MarketType::Categorical(ref categories) = market.market_type {
-                    ensure!(inner < categories, Error::<T>::OutcomeOutOfRange);
-                } else {
-                    return Err(Error::<T>::OutcomeMismatch.into());
-                }
-            }
-            if let OutcomeReport::Scalar(_) = outcome {
-                ensure!(
-                    matches!(&market.market_type, MarketType::Scalar(_)),
-                    Error::<T>::OutcomeMismatch
-                );
-            }
-            Ok(())
-        }
-
-        fn manage_resolved_categorical_market(
-            market: &Market<T::AccountId, T::BlockNumber, MomentOf<T>>,
-            market_id: &MarketIdOf<T>,
-            outcome_report: &OutcomeReport,
-        ) -> Result<[usize; 3], DispatchError> {
-            let mut total_accounts: usize = 0;
-            let mut total_asset_accounts: usize = 0;
-            let mut total_categories: usize = 0;
-
-            if let MarketType::Categorical(_) = market.market_type {
-                if let OutcomeReport::Categorical(winning_asset_idx) = *outcome_report {
-                    let assets = Self::outcome_assets(*market_id, market);
-                    total_categories = assets.len().saturated_into();
-
-                    let mut assets_iter = assets.iter().cloned();
-                    let mut manage_asset = |asset: Asset<_>, winning_asset_idx| {
-                        if let Asset::CategoricalOutcome(_, idx) = asset {
-                            if idx == winning_asset_idx {
-                                return 0;
-                            }
-                            let (total_accounts, accounts) =
-                                T::Shares::accounts_by_currency_id(asset);
-                            total_asset_accounts =
-                                total_asset_accounts.saturating_add(accounts.len());
-                            T::Shares::destroy_all(asset, accounts.iter().cloned());
-                            total_accounts
-                        } else {
-                            0
-                        }
-                    };
-
-                    if let Some(first_asset) = assets_iter.next() {
-                        total_accounts = manage_asset(first_asset, winning_asset_idx);
-                    }
-                    for asset in assets_iter {
-                        let _ = manage_asset(asset, winning_asset_idx);
-                    }
-                }
-            }
-
-            Ok([total_accounts, total_asset_accounts, total_categories])
-        }
-
-        fn set_market_as_disputed(
-            market: &Market<T::AccountId, T::BlockNumber, MomentOf<T>>,
-            market_id: &MarketIdOf<T>,
-        ) -> DispatchResult {
-            if market.status != MarketStatus::Disputed {
-                T::MarketCommons::mutate_market(market_id, |m| {
-                    m.status = MarketStatus::Disputed;
-                    Ok(())
-                })?;
-            }
-            Ok(())
-        }
-
-        fn set_pool_to_stale(
-            market: &Market<T::AccountId, T::BlockNumber, MomentOf<T>>,
-            market_id: &MarketIdOf<T>,
-            outcome_report: &OutcomeReport,
-        ) -> Result<Weight, DispatchError> {
-            let pool_id = if let Ok(el) = T::MarketCommons::market_pool(market_id) {
-                el
-            } else {
-                return Ok(T::DbWeight::get().reads(1));
-            };
-            let market_account = Self::market_account(*market_id);
-            let weight = T::Swaps::set_pool_as_stale(
-                &market.market_type,
-                pool_id,
-                outcome_report,
-                &market_account,
-            )?;
-            Ok(weight.saturating_add(T::DbWeight::get().reads(2)))
         }
 
         pub(crate) fn start_subsidy(
@@ -699,23 +537,6 @@ mod pallet {
 
             Ok(T::WeightInfo::start_subsidy(total_assets.saturated_into()))
         }
-
-        fn validate_dispute(
-            disputes: &[MarketDispute<T::AccountId, T::BlockNumber>],
-            market: &Market<T::AccountId, T::BlockNumber, MomentOf<T>>,
-            num_disputes: u32,
-            outcome: &OutcomeReport,
-        ) -> DispatchResult {
-            ensure!(market.report.is_some(), Error::<T>::MarketNotReported);
-            Self::ensure_outcome_matches_market_type(market, outcome)?;
-            Self::ensure_can_not_dispute_the_same_outcome(
-                disputes,
-                (&market.report.as_ref()).ok_or(Error::<T>::MarketNotReported)?,
-                outcome,
-            )?;
-            Self::ensure_disputes_does_not_exceed_max_disputes(num_disputes)?;
-            Ok(())
-        }
     }
 
     pub fn default_dispute_bond<T>(n: usize) -> BalanceOf<T>
@@ -725,11 +546,5 @@ mod pallet {
         T::DisputeBond::get().saturating_add(
             T::DisputeFactor::get().saturating_mul(n.saturated_into::<u32>().into()),
         )
-    }
-
-    fn remove_item<I: cmp::PartialEq, G>(items: &mut BoundedVec<I, G>, item: &I) {
-        if let Some(pos) = items.iter().position(|i| i == item) {
-            items.swap_remove(pos);
-        }
     }
 }
