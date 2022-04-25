@@ -67,7 +67,7 @@ pub trait Swaps<AccountId> {
         pool_id: PoolId,
         asset: Asset<Self::MarketId>,
         asset_amount: Self::Balance,
-        max_pool_amount: Self::Balance,
+        max_pool_amount: Option<Self::Balance>,
     ) -> Result<Weight, DispatchError>;
 
     /// Pool - Join with exact asset amount
@@ -88,7 +88,7 @@ pub trait Swaps<AccountId> {
         pool_id: PoolId,
         asset_in: Asset<Self::MarketId>,
         asset_amount: Self::Balance,
-        min_pool_amount: Self::Balance,
+        min_pool_amount: Option<Self::Balance>,
     ) -> Result<Weight, DispatchError>;
 
     /// Returns the pool instance of a corresponding `pool_id`.

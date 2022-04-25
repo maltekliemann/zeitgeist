@@ -250,16 +250,16 @@ benchmarks! {
         let caller: T::AccountId = whitelisted_caller();
         let (pool_id, assets, ..) = bench_create_pool::<T>(caller.clone(), Some(a as usize), None, ScoringRule::CPMM, false);
         let asset_amount: BalanceOf<T> = BASE.saturated_into();
-        let pool_amount = T::MinLiquidity::get();
-    }: _(RawOrigin::Signed(caller), pool_id, assets[0], asset_amount, pool_amount)
+        let max_pool_amount = Some(T::MinLiquidity::get());
+    }: _(RawOrigin::Signed(caller), pool_id, assets[0], asset_amount, max_pool_amount)
 
     pool_exit_with_exact_pool_amount {
         let a = T::MaxAssets::get();
         let caller: T::AccountId = whitelisted_caller();
         let (pool_id, assets, ..) = bench_create_pool::<T>(caller.clone(), Some(a as usize), None, ScoringRule::CPMM, false);
-        let asset_amount: BalanceOf<T> = BASE.saturated_into();
-        let pool_amount = 0u32.into();
-    }: _(RawOrigin::Signed(caller), pool_id, assets[0], asset_amount, pool_amount)
+        let pool_amount = BASE.saturated_into();
+        let min_asset_amount: Option<BalanceOf<T>> = Some(0u32.saturated_into());
+    }: _(RawOrigin::Signed(caller), pool_id, assets[0], pool_amount, min_asset_amount)
 
     pool_join {
         let a in 2 .. T::MaxAssets::get().into();
@@ -281,7 +281,7 @@ benchmarks! {
         let (pool_id, assets, ..) = bench_create_pool::<T>(caller.clone(), Some(a as usize),
             Some(T::MinLiquidity::get() * 2u32.into()), ScoringRule::CPMM, false);
         let asset_amount: BalanceOf<T> = BASE.saturated_into();
-        let min_pool_amount = 0u32.into();
+        let min_pool_amount = Some(0u32.into());
     }: _(RawOrigin::Signed(caller), pool_id, assets[0], asset_amount, min_pool_amount)
 
     pool_join_with_exact_pool_amount {
@@ -290,7 +290,7 @@ benchmarks! {
         let (pool_id, assets, ..) = bench_create_pool::<T>(caller.clone(), Some(a as usize),
             Some(T::MinLiquidity::get() * 2u32.into()), ScoringRule::CPMM, false);
         let pool_amount = BASE.saturated_into();
-        let max_asset_amount: BalanceOf<T> = T::MinLiquidity::get();
+        let max_asset_amount: Option<BalanceOf<T>> = Some(T::MinLiquidity::get());
     }: _(RawOrigin::Signed(caller), pool_id, assets[0], pool_amount, max_asset_amount)
 
     set_pool_as_stale_without_reward_distribution {

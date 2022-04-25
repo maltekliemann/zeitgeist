@@ -255,7 +255,7 @@ mod pallet {
             pool_id: PoolId,
             asset: Asset<T::MarketId>,
             asset_amount: BalanceOf<T>,
-            max_pool_amount: BalanceOf<T>,
+            max_pool_amount: Option<BalanceOf<T>>,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             <Self as Swaps<T::AccountId>>::pool_exit_with_exact_asset_amount(
@@ -288,7 +288,7 @@ mod pallet {
             pool_id: PoolId,
             asset: Asset<T::MarketId>,
             pool_amount: BalanceOf<T>,
-            min_asset_amount: BalanceOf<T>,
+            min_asset_amount: Option<BalanceOf<T>>,
         ) -> DispatchResult {
             ensure!(pool_amount != Zero::zero(), Error::<T>::MathApproximation);
             let pool = Self::pool_by_id(pool_id)?;
@@ -314,7 +314,9 @@ mod pallet {
                     )?
                     .saturated_into();
                     ensure!(asset_amount != Zero::zero(), Error::<T>::MathApproximation);
-                    ensure!(asset_amount >= min_asset_amount, Error::<T>::LimitOut);
+                    if let Some(maa) = min_asset_amount {
+                        ensure!(asset_amount >= maa, Error::<T>::LimitOut);
+                    }
                     ensure!(
                         asset_amount
                             <= bmul(
@@ -451,7 +453,7 @@ mod pallet {
             pool_id: PoolId,
             asset_in: Asset<T::MarketId>,
             asset_amount: BalanceOf<T>,
-            min_pool_amount: BalanceOf<T>,
+            min_pool_amount: Option<BalanceOf<T>>,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             <Self as Swaps<T::AccountId>>::pool_join_with_exact_asset_amount(
@@ -484,7 +486,7 @@ mod pallet {
             pool_id: PoolId,
             asset: Asset<T::MarketId>,
             pool_amount: BalanceOf<T>,
-            max_asset_amount: BalanceOf<T>,
+            max_asset_amount: Option<BalanceOf<T>>,
         ) -> DispatchResult {
             let pool = Pallet::<T>::pool_by_id(pool_id)?;
             let pool_account_id = Pallet::<T>::pool_account_id(pool_id);
@@ -509,7 +511,9 @@ mod pallet {
                     )?
                     .saturated_into();
                     ensure!(asset_amount != Zero::zero(), Error::<T>::MathApproximation);
-                    ensure!(asset_amount <= max_asset_amount, Error::<T>::LimitIn);
+                    if let Some(asa) = max_asset_amount {
+                        ensure!(asset_amount <= asa, Error::<T>::LimitIn);
+                    }
                     ensure!(
                         asset_amount <= asset_balance.check_mul_rslt(&T::MaxInRatio::get())?,
                         Error::<T>::MaxInRatio
@@ -1578,7 +1582,7 @@ mod pallet {
             pool_id: PoolId,
             asset: Asset<T::MarketId>,
             asset_amount: BalanceOf<T>,
-            max_pool_amount: BalanceOf<T>,
+            max_pool_amount: Option<BalanceOf<T>>,
         ) -> Result<Weight, DispatchError> {
             let pool = Self::pool_by_id(pool_id)?;
             let pool_ref = &pool;
@@ -1615,7 +1619,9 @@ mod pallet {
                     )?
                     .saturated_into();
                     ensure!(pool_amount != Zero::zero(), Error::<T>::MathApproximation);
-                    ensure!(pool_amount <= max_pool_amount, Error::<T>::LimitIn);
+                    if let Some(mpa) = max_pool_amount {
+                        ensure!(pool_amount <= mpa, Error::<T>::LimitIn);
+                    }
                     T::LiquidityMining::remove_shares(&who, &pool_ref.market_id, asset_amount);
                     Ok(pool_amount)
                 },
@@ -1647,7 +1653,7 @@ mod pallet {
             pool_id: PoolId,
             asset_in: Asset<T::MarketId>,
             asset_amount: BalanceOf<T>,
-            min_pool_amount: BalanceOf<T>,
+            min_pool_amount: Option<BalanceOf<T>>,
         ) -> Result<Weight, DispatchError> {
             ensure!(asset_amount != Zero::zero(), Error::<T>::MathApproximation);
             let pool = Pallet::<T>::pool_by_id(pool_id)?;
@@ -1678,7 +1684,9 @@ mod pallet {
                         pool_ref.swap_fee.ok_or(Error::<T>::PoolMissingFee)?.saturated_into(),
                     )?
                     .saturated_into();
-                    ensure!(pool_amount >= min_pool_amount, Error::<T>::LimitOut);
+                    if let Some(mpa) = min_pool_amount {
+                        ensure!(pool_amount >= mpa, Error::<T>::LimitOut);
+                    }
                     T::LiquidityMining::add_shares(who.clone(), pool_ref.market_id, asset_amount);
                     Ok(pool_amount)
                 },

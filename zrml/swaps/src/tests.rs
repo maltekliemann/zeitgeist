@@ -152,20 +152,20 @@ fn assets_must_be_bounded() {
         );
 
         assert_noop!(
-            Swaps::pool_join_with_exact_asset_amount(alice_signed(), 0, ASSET_B, 1, 1),
+            Swaps::pool_join_with_exact_asset_amount(alice_signed(), 0, ASSET_B, 1, Some(1)),
             crate::Error::<Runtime>::AssetNotBound
         );
         assert_noop!(
-            Swaps::pool_join_with_exact_pool_amount(alice_signed(), 0, ASSET_B, 1, 1),
+            Swaps::pool_join_with_exact_pool_amount(alice_signed(), 0, ASSET_B, 1, Some(1)),
             crate::Error::<Runtime>::AssetNotBound
         );
 
         assert_noop!(
-            Swaps::pool_exit_with_exact_pool_amount(alice_signed(), 0, ASSET_B, 1, 1),
+            Swaps::pool_exit_with_exact_pool_amount(alice_signed(), 0, ASSET_B, 1, Some(1)),
             crate::Error::<Runtime>::AssetNotBound
         );
         assert_noop!(
-            Swaps::pool_exit_with_exact_asset_amount(alice_signed(), 0, ASSET_B, 1, 1),
+            Swaps::pool_exit_with_exact_asset_amount(alice_signed(), 0, ASSET_B, 1, Some(1)),
             crate::Error::<Runtime>::AssetNotBound
         );
     });
@@ -414,11 +414,11 @@ fn ensure_which_operations_can_be_called_depending_on_the_pool_status() {
 
         assert_ok!(Swaps::pool_exit(alice_signed(), 0, _1, vec!(_1_2, _1_2)));
         assert_noop!(
-            Swaps::pool_exit_with_exact_asset_amount(alice_signed(), 0, ASSET_A, _1, _2),
+            Swaps::pool_exit_with_exact_asset_amount(alice_signed(), 0, ASSET_A, _1, Some(_2)),
             crate::Error::<Runtime>::PoolIsNotActive
         );
         assert_noop!(
-            Swaps::pool_exit_with_exact_pool_amount(alice_signed(), 0, ASSET_A, _1, _1_2),
+            Swaps::pool_exit_with_exact_pool_amount(alice_signed(), 0, ASSET_A, _1, Some(_1_2)),
             crate::Error::<Runtime>::PoolIsNotActive
         );
         assert_noop!(
@@ -426,11 +426,11 @@ fn ensure_which_operations_can_be_called_depending_on_the_pool_status() {
             crate::Error::<Runtime>::PoolIsNotActive
         );
         assert_noop!(
-            Swaps::pool_join_with_exact_asset_amount(alice_signed(), 0, ASSET_E, 1, 1),
+            Swaps::pool_join_with_exact_asset_amount(alice_signed(), 0, ASSET_E, 1, Some(1)),
             crate::Error::<Runtime>::PoolIsNotActive
         );
         assert_noop!(
-            Swaps::pool_join_with_exact_pool_amount(alice_signed(), 0, ASSET_E, 1, 1),
+            Swaps::pool_join_with_exact_pool_amount(alice_signed(), 0, ASSET_E, 1, Some(1)),
             crate::Error::<Runtime>::PoolIsNotActive
         );
         assert_ok!(Currencies::deposit(ASSET_A, &ALICE, u64::MAX.into()));
@@ -520,13 +520,13 @@ fn in_amount_must_be_equal_or_less_than_max_in_ratio() {
                 0,
                 ASSET_A,
                 u64::MAX.into(),
-                1
+                Some(1),
             ),
             crate::Error::<Runtime>::MaxInRatio
         );
 
         assert_noop!(
-            Swaps::pool_exit_with_exact_pool_amount(alice_signed(), 0, ASSET_A, _100, 0),
+            Swaps::pool_exit_with_exact_pool_amount(alice_signed(), 0, ASSET_A, _100, None),
             crate::Error::<Runtime>::MaxInRatio
         );
     });
@@ -557,7 +557,7 @@ fn pool_join_amount_satisfies_max_in_ratio_constraints() {
                 0,
                 ASSET_A,
                 _100,
-                _10000 // Don't care how much we have to pay!
+                Some(_10000) // Don't care how much we have to pay!
             ),
             crate::Error::<Runtime>::MaxOutRatio
         );
@@ -608,7 +608,7 @@ fn out_amount_must_be_equal_or_less_than_max_out_ratio() {
         );
 
         assert_noop!(
-            Swaps::pool_exit_with_exact_asset_amount(alice_signed(), 0, ASSET_A, u128::MAX, 1),
+            Swaps::pool_exit_with_exact_asset_amount(alice_signed(), 0, ASSET_A, u128::MAX, None),
             crate::Error::<Runtime>::MaxOutRatio
         );
     });
@@ -630,22 +630,22 @@ fn pool_join_or_exit_raises_on_zero_value() {
         );
 
         assert_noop!(
-            Swaps::pool_join_with_exact_pool_amount(alice_signed(), 0, ASSET_A, 0, 0),
+            Swaps::pool_join_with_exact_pool_amount(alice_signed(), 0, ASSET_A, 0, Some(0)),
             crate::Error::<Runtime>::MathApproximation
         );
 
         assert_noop!(
-            Swaps::pool_join_with_exact_asset_amount(alice_signed(), 0, ASSET_A, 0, 0),
+            Swaps::pool_join_with_exact_asset_amount(alice_signed(), 0, ASSET_A, 0, Some(0)),
             crate::Error::<Runtime>::MathApproximation
         );
 
         assert_noop!(
-            Swaps::pool_exit_with_exact_pool_amount(alice_signed(), 0, ASSET_A, 0, 0),
+            Swaps::pool_exit_with_exact_pool_amount(alice_signed(), 0, ASSET_A, 0, Some(0)),
             crate::Error::<Runtime>::MathApproximation
         );
 
         assert_noop!(
-            Swaps::pool_exit_with_exact_asset_amount(alice_signed(), 0, ASSET_A, 0, 0),
+            Swaps::pool_exit_with_exact_asset_amount(alice_signed(), 0, ASSET_A, 0, Some(0)),
             crate::Error::<Runtime>::MathApproximation
         );
     });
@@ -839,18 +839,24 @@ fn pool_exit_with_exact_pool_amount_exchanges_correct_values() {
         <Runtime as Config>::ExitFee::set(&0u128);
         frame_system::Pallet::<Runtime>::set_block_number(1);
         create_initial_pool_with_funds_for_alice(ScoringRule::CPMM, true);
-        assert_ok!(Swaps::pool_join_with_exact_asset_amount(alice_signed(), 0, ASSET_A, _5, 0));
+        assert_ok!(Swaps::pool_join_with_exact_asset_amount(
+            alice_signed(),
+            0,
+            ASSET_A,
+            _5,
+            Some(0),
+        ));
         let pool_amount = Currencies::free_balance(Swaps::pool_shares_id(0), &ALICE);
         assert_ok!(Swaps::pool_exit_with_exact_pool_amount(
             alice_signed(),
             0,
             ASSET_A,
             pool_amount,
-            _4
+            Some(_4),
         ));
         assert!(event_exists(crate::Event::PoolExitWithExactPoolAmount(PoolAssetEvent {
             asset: ASSET_A,
-            bound: _4,
+            bound: Some(_4),
             cpep: CommonPoolEventParams { pool_id: 0, who: 0 },
             transferred: _5 - 335,
             pool_amount,
@@ -865,14 +871,20 @@ fn pool_exit_with_exact_pool_amount_exchanges_correct_values_with_fee() {
         <Runtime as Config>::ExitFee::set(&(BASE / 10));
         frame_system::Pallet::<Runtime>::set_block_number(1);
         create_initial_pool_with_funds_for_alice(ScoringRule::CPMM, true);
-        assert_ok!(Swaps::pool_join_with_exact_asset_amount(alice_signed(), 0, ASSET_A, _5, 0));
+        assert_ok!(Swaps::pool_join_with_exact_asset_amount(
+            alice_signed(),
+            0,
+            ASSET_A,
+            _5,
+            Some(0)
+        ));
         let pool_amount = Currencies::free_balance(Swaps::pool_shares_id(0), &ALICE);
         assert_ok!(Swaps::pool_exit_with_exact_pool_amount(
             alice_signed(),
             0,
             ASSET_A,
             pool_amount,
-            _4
+            Some(_4),
         ));
         assert_all_parameters(
             [245_082_061_850, _25, _25, _25],
@@ -882,7 +894,7 @@ fn pool_exit_with_exact_pool_amount_exchanges_correct_values_with_fee() {
         );
         assert!(event_exists(crate::Event::PoolExitWithExactPoolAmount(PoolAssetEvent {
             asset: ASSET_A,
-            bound: _4,
+            bound: Some(_4),
             cpep: CommonPoolEventParams { pool_id: 0, who: 0 },
             transferred: 45_082_061_850,
             pool_amount,
@@ -897,7 +909,13 @@ fn pool_exit_with_exact_asset_amount_exchanges_correct_values() {
         frame_system::Pallet::<Runtime>::set_block_number(1);
         create_initial_pool_with_funds_for_alice(ScoringRule::CPMM, true);
         let asset_before_join = Currencies::free_balance(ASSET_A, &ALICE);
-        assert_ok!(Swaps::pool_join_with_exact_pool_amount(alice_signed(), 0, ASSET_A, _1, _5));
+        assert_ok!(Swaps::pool_join_with_exact_pool_amount(
+            alice_signed(),
+            0,
+            ASSET_A,
+            _1,
+            Some(_5)
+        ));
         let pool_amount_before_exit = Currencies::free_balance(Swaps::pool_shares_id(0), &ALICE);
         let asset_after_join = asset_before_join - Currencies::free_balance(ASSET_A, &ALICE);
         assert_ok!(Swaps::pool_exit_with_exact_asset_amount(
@@ -905,13 +923,13 @@ fn pool_exit_with_exact_asset_amount_exchanges_correct_values() {
             0,
             ASSET_A,
             asset_after_join - 1000,
-            _1
+            Some(_1),
         ));
         let pool_amount_after_exit = Currencies::free_balance(Swaps::pool_shares_id(0), &ALICE);
         let pool_amount = pool_amount_before_exit - pool_amount_after_exit;
         assert!(event_exists(crate::Event::PoolExitWithExactAssetAmount(PoolAssetEvent {
             asset: ASSET_A,
-            bound: _1,
+            bound: Some(_1),
             cpep: CommonPoolEventParams { pool_id: 0, who: 0 },
             transferred: asset_after_join - 1000,
             pool_amount,
@@ -933,7 +951,13 @@ fn pool_exit_with_exact_asset_amount_exchanges_correct_values_with_fee() {
         frame_system::Pallet::<Runtime>::set_block_number(1);
         create_initial_pool_with_funds_for_alice(ScoringRule::CPMM, true);
         let asset_before_join = Currencies::free_balance(ASSET_A, &ALICE);
-        assert_ok!(Swaps::pool_join_with_exact_pool_amount(alice_signed(), 0, ASSET_A, _1, _5));
+        assert_ok!(Swaps::pool_join_with_exact_pool_amount(
+            alice_signed(),
+            0,
+            ASSET_A,
+            _1,
+            Some(_5)
+        ));
         let asset_after_join = asset_before_join - Currencies::free_balance(ASSET_A, &ALICE);
         let exit_amount = (asset_after_join * 9) / 10;
         let amount_left_behind_in_pool = asset_after_join - exit_amount;
@@ -942,12 +966,12 @@ fn pool_exit_with_exact_asset_amount_exchanges_correct_values_with_fee() {
             0,
             ASSET_A,
             exit_amount,
-            _1
+            Some(_1),
         ));
         let pool_amount = 9_984_935_413;
         assert!(event_exists(crate::Event::PoolExitWithExactAssetAmount(PoolAssetEvent {
             asset: ASSET_A,
-            bound: _1,
+            bound: Some(_1),
             cpep: CommonPoolEventParams { pool_id: 0, who: 0 },
             transferred: exit_amount,
             pool_amount,
@@ -1069,12 +1093,12 @@ fn pool_join_with_exact_asset_amount_exchanges_correct_values() {
             0,
             ASSET_A,
             alice_sent,
-            0
+            None,
         ));
         let alice_received = Currencies::free_balance(Swaps::pool_shares_id(0), &ALICE);
         assert!(event_exists(crate::Event::PoolJoinWithExactAssetAmount(PoolAssetEvent {
             asset: ASSET_A,
-            bound: 0,
+            bound: None,
             cpep: CommonPoolEventParams { pool_id: 0, who: 0 },
             transferred: alice_sent,
             pool_amount: alice_received,
@@ -1100,12 +1124,12 @@ fn pool_join_with_exact_pool_amount_exchanges_correct_values() {
             0,
             ASSET_A,
             alice_sent,
-            _5
+            Some(_5),
         ));
         let asset_amount = alice_initial - Currencies::free_balance(ASSET_A, &ALICE);
         assert!(event_exists(crate::Event::PoolJoinWithExactPoolAmount(PoolAssetEvent {
             asset: ASSET_A,
-            bound: _5,
+            bound: Some(_5),
             cpep: CommonPoolEventParams { pool_id: 0, who: 0 },
             transferred: asset_amount,
             pool_amount: alice_sent,
@@ -1633,7 +1657,7 @@ fn pool_join_with_exact_asset_amount_fails_if_min_pool_tokens_is_violated() {
                 0,
                 ASSET_A,
                 _1,
-                2490679300 + 100,
+                Some(2490679300 + 100),
             ),
             crate::Error::<Runtime>::LimitOut,
         );
@@ -1650,7 +1674,7 @@ fn pool_join_with_exact_pool_amount_fails_if_max_asset_amount_is_violated() {
                 0,
                 ASSET_A,
                 _1,
-                40604010000 - 100,
+                Some(40604010000 - 100),
             ),
             crate::Error::<Runtime>::LimitIn,
         );
@@ -1674,7 +1698,7 @@ fn pool_exit_with_exact_asset_amount_fails_if_min_pool_amount_is_violated() {
     ExtBuilder::default().build().execute_with(|| {
         <Runtime as Config>::ExitFee::set(&(BASE / 10));
         create_initial_pool_with_funds_for_alice(ScoringRule::CPMM, true);
-        assert_ok!(Swaps::pool_join_with_exact_asset_amount(alice_signed(), 0, ASSET_A, _5, 0));
+        assert_ok!(Swaps::pool_join_with_exact_asset_amount(alice_signed(), 0, ASSET_A, _5, None));
         let pool_amount = Currencies::free_balance(Swaps::pool_shares_id(0), &ALICE);
         let expected_amount = 45_082_061_850;
         assert_noop!(
@@ -1683,7 +1707,7 @@ fn pool_exit_with_exact_asset_amount_fails_if_min_pool_amount_is_violated() {
                 0,
                 ASSET_A,
                 pool_amount,
-                expected_amount + 100,
+                Some(expected_amount + 100),
             ),
             crate::Error::<Runtime>::LimitOut,
         );
@@ -1696,7 +1720,13 @@ fn pool_exit_with_exact_pool_amount_fails_if_max_asset_amount_is_violated() {
         <Runtime as Config>::ExitFee::set(&(BASE / 10));
         create_initial_pool_with_funds_for_alice(ScoringRule::CPMM, true);
         let asset_before_join = Currencies::free_balance(ASSET_A, &ALICE);
-        assert_ok!(Swaps::pool_join_with_exact_pool_amount(alice_signed(), 0, ASSET_A, _1, _5));
+        assert_ok!(Swaps::pool_join_with_exact_pool_amount(
+            alice_signed(),
+            0,
+            ASSET_A,
+            _1,
+            Some(_5),
+        ));
         let asset_after_join = asset_before_join - Currencies::free_balance(ASSET_A, &ALICE);
         let exit_amount = (asset_after_join * 9) / 10;
         let expected_amount = 9_984_935_413;
@@ -1706,7 +1736,7 @@ fn pool_exit_with_exact_pool_amount_fails_if_max_asset_amount_is_violated() {
                 0,
                 ASSET_A,
                 exit_amount,
-                expected_amount - 100,
+                Some(expected_amount - 100),
             ),
             crate::Error::<Runtime>::LimitIn,
         );

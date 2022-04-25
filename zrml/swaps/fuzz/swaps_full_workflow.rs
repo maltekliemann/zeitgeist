@@ -87,13 +87,13 @@ struct Data {
     pool_join_with_exact_asset_amount_pool_id: u8,
     pool_join_with_exact_asset_amount_asset_in: (u128, u16),
     pool_join_with_exact_asset_amount_asset_amount: u128,
-    pool_join_with_exact_asset_amount_min_pool_amount: u128,
+    pool_join_with_exact_asset_amount_min_pool_amount: Option<u128>,
 
     pool_join_with_exact_pool_amount_origin: u8,
     pool_join_with_exact_pool_amount_pool_id: u8,
     pool_join_with_exact_pool_amount_asset: (u128, u16),
     pool_join_with_exact_pool_amount_pool_amount: u128,
-    pool_join_with_exact_pool_amount_max_asset_amount: u128,
+    pool_join_with_exact_pool_amount_max_asset_amount: Option<u128>,
 
     swap_exact_amount_in_origin: u8,
     swap_exact_amount_in_pool_id: u8,
@@ -115,13 +115,13 @@ struct Data {
     pool_exit_with_exact_pool_amount_pool_id: u8,
     pool_exit_with_exact_pool_amount_asset: (u128, u16),
     pool_exit_with_exact_pool_amount_pool_amount: u128,
-    pool_exit_with_exact_pool_amount_min_asset_amount: u128,
+    pool_exit_with_exact_pool_amount_min_asset_amount: Option<u128>,
 
     pool_exit_with_exact_asset_amount_origin: u8,
     pool_exit_with_exact_asset_amount_pool_id: u8,
     pool_exit_with_exact_asset_amount_asset: (u128, u16),
     pool_exit_with_exact_asset_amount_asset_amount: u128,
-    pool_exit_with_exact_asset_amount_max_pool_amount: u128,
+    pool_exit_with_exact_asset_amount_max_pool_amount: Option<u128>,
 
     pool_exit_origin: u8,
     pool_exit_pool_id: u8,

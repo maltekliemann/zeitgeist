@@ -23,7 +23,7 @@ pub struct PoolAssetsEvent<AI, AS, B> {
 #[derive(Clone, Debug, Decode, Default, Encode, Eq, Ord, PartialEq, PartialOrd, TypeInfo)]
 pub struct PoolAssetEvent<AI, AS, B> {
     pub asset: AS,
-    pub bound: B,
+    pub bound: Option<B>,
     pub cpep: CommonPoolEventParams<AI>,
     pub transferred: B,
     pub pool_amount: B,

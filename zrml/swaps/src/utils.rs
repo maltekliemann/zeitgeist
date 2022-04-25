@@ -228,7 +228,7 @@ where
 {
     pub(crate) asset_amount: F1,
     pub(crate) asset: Asset<T::MarketId>,
-    pub(crate) bound: BalanceOf<T>,
+    pub(crate) bound: Option<BalanceOf<T>>,
     pub(crate) ensure_balance: F2,
     pub(crate) event: F3,
     pub(crate) who: T::AccountId,
@@ -243,7 +243,7 @@ where
 {
     pub(crate) asset: Asset<T::MarketId>,
     pub(crate) asset_amount: F1,
-    pub(crate) bound: BalanceOf<T>,
+    pub(crate) bound: Option<BalanceOf<T>>,
     pub(crate) event: F2,
     pub(crate) who: T::AccountId,
     pub(crate) pool_account_id: &'a T::AccountId,

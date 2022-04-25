@@ -679,7 +679,7 @@ mod pallet {
                         pool_id,
                         asset,
                         amount,
-                        zero_balance,
+                        None,
                     )?;
                     weight_pool_joins_and_sells =
                         weight_pool_joins_and_sells.saturating_add(local_weight);
