@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
 
-if [ ! -d "./scripts/tests" ]; then
+if [ ! -d "./integration-tests/scripts" ]; then
     echo "Please execute this script from the root of the Zeitgeist project folder"
     exit 1
 fi;
 
-cargo build --features parachain
+echo "Please make sure you executed 'cargo build --release --features parachain'."
 
 export ADDITIONAL_ZOMBIECONFIG="${ADDITIONAL_ZOMBIECONFIG:-}"
 export ZOMBIENET_CONFIG_FILE="${ZOMBIENET_CONFIG_FILE:-"./integration-tests/zombienet/produce-blocks.toml"}"
 export ZOMBIENET_DSL_FILE="${ZOMBIENET_CONFIG_FILE%.toml}.zndsl"
 
 # Define destination path
-ZOMBIENET_BINARY="./tmp/zombienet"
+ZOMBIENET_BINARY="./integration-tests/tmp/zombienet"
 
 # Default values for flags
 RUN_TESTS=0  # This flag will be set to 1 if the -t or --test option is present
@@ -67,6 +67,7 @@ function download_zombienet {
     fi
 
     mkdir -p ./tmp/
+    mkdir -p ./integration-tests/tmp/
 
     # Download the file
     echo "Downloading ${FILE_NAME} from ${DOWNLOAD_URL}"
