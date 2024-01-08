@@ -2145,15 +2145,6 @@ mod pallet {
             total_weight = total_weight
                 .saturating_add(T::WeightInfo::process_subsidy_collecting_markets_dummy());
 
-            // If we are at genesis or the first block the timestamp is be undefined. No
-            // market needs to be opened or closed on blocks #0 or #1, so we skip the
-            // evaluation. Without this check, new chains starting from genesis will hang up,
-            // since the loops in the `market_status_manager` calls below will run over an interval
-            // of 0 to the current time frame.
-            if now <= 1u32.into() {
-                return total_weight;
-            }
-
             // We add one to the count, because `pallet-timestamp` sets the timestamp _after_
             // `on_initialize` is called, so calling `now()` during `on_initialize` gives us
             // the timestamp of the previous block.
