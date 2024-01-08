@@ -1858,14 +1858,6 @@ mod pallet {
         fn on_initialize(now: T::BlockNumber) -> Weight {
             let mut total_weight: Weight = Weight::zero();
 
-            // TODO(#808): Use weight when Rikiddo is ready
-            let _ = Self::process_subsidy_collecting_markets(
-                now,
-                <zrml_market_commons::Pallet<T>>::now(),
-            );
-            total_weight = total_weight
-                .saturating_add(T::WeightInfo::process_subsidy_collecting_markets_dummy());
-
             // We add one to the count, because `pallet-timestamp` sets the timestamp _after_
             // `on_initialize` is called, so calling `now()` during `on_initialize` gives us
             // the timestamp of the previous block.
